@@ -25,7 +25,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }} 
-          args: detect --report-format json --report-path gitleaks_report.json --config-path .gitleaks.toml
+          args: detect --verbose --no-color --report-format json --report-path gitleaks_report.json --config-path .gitleaks.toml
 
       - name: Upload Gitleaks report
         uses: actions/upload-artifact@v4

@@ -1,0 +1,26 @@
+# Gitleaks configuration for pod-lens
+# Detects and prevents secrets from being committed
+# Reference: https://github.com/gitleaks/gitleaks
+
+[extend]
+useDefault = true
+
+# Allowlist patterns to prevent false positives in test files
+[allowlist]
+description = "Allowlist test files and known false positives"
+
+# Paths to skip (e.g., vendor, migrations, test files in specific patterns)
+paths = [
+  "(?i).*_test\\.go$",       # Go test files
+  "(?i)(vendor|node_modules)/" # Dependencies
+]
+
+# Specific commits to skip (format: commit hash)
+# commits = []
+
+# Regexes for content that should be ignored
+# These patterns match tokens in test code that are not real credentials
+regexes = [
+  "sk_test_",                # Stripe test token prefix (used in tests)
+]
+

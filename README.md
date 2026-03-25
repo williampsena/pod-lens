@@ -125,6 +125,22 @@ docker run -p 8080:8080 willsenabr/pod-lens:latest
 - ✅ Safe environment variable filtering
 - ✅ Non-root container user
 - ✅ Minimal Alpine base image
+- ✅ Secret detection with Gitleaks (configured in `.gitleaks.toml`)
+
+### Gitleaks Configuration
+
+This project uses [Gitleaks](https://github.com/gitleaks/gitleaks) to detect and prevent secrets from being committed. The configuration:
+
+- Runs on every commit in GitHub Actions
+- Scans repository history for credential patterns
+- Ignores test files and known false positives
+
+To run locally:
+```bash
+gitleaks detect --verbose
+```
+
+## 📊 Test Coverage
 
 Run `make test-coverage` for detailed report.
 
