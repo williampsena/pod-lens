@@ -1,0 +1,29 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+pod-lens
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace files
+*.log
+
+# Directories
+bin/
+vendor/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# env files
+.env
+.*.pid
+.env.sample

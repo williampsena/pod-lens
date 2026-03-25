@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="/static/styles/base.css">
+  <link rel="stylesheet" href="/static/styles/{{.Theme}}.css">
+  <title>☸️ Pod Lens</title>
+</head>
+<body>
+  <h1>☸️ Pod Lens</h1>
+
+  <h2>📦 Pod Information</h2>
+  <ul>
+    <li><b>Hostname:</b> {{.Pod.Hostname}}</li>
+    <li><b>IP Addresses:</b> {{range .Pod.IPAddresses}}{{.}}&nbsp;{{end}}</li>
+    <li><b>Go Version:</b> {{.Pod.GoVersion}}</li>
+    <li><b>OS:</b> {{.Pod.OS}}</li>
+    <li><b>Architecture:</b> {{.Pod.Architecture}}</li>
+    <li><b>Started:</b> {{.Pod.StartupTime}}</li>
+  </ul>
+
+  <h2>🏷️ Labels</h2>
+  <ul>
+    {{range $k, $v := .Labels}}
+      <li><b>{{$k}}</b>: {{$v}}</li>
+    {{else}}
+      <li><em>No labels defined</em></li>
+    {{end}}
+  </ul>
+
+  <h2>📝 Request Headers</h2>
+  <ul>
+    {{range $k, $v := .Headers}}
+      <li><b>{{$k}}</b>: {{$v}}</li>
+    {{else}}
+      <li><em>No headers</em></li>
+    {{end}}
+  </ul>
+
+  <h2>🔧 Environment Variables</h2>
+  <ul>
+    {{range $k, $v := .Pod.Environment}}
+      <li><b>{{$k}}</b>: {{$v}}</li>
+    {{else}}
+      <li><em>No safe environment variables</em></li>
+    {{end}}
+  </ul>
+</body>
+</html>

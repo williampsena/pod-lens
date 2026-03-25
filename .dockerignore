@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Go
+vendor
+*.out
+go.sum.bak
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.dll
+
+# Development
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.env
+.env.sample
+
+# Testing
+coverage.out
+.pod-lens.pid
+
+# Documentation
+README.md
+docs/
+.tool-versions
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.drone.yml
+
+# Makefile
+Makefile
