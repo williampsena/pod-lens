@@ -1,5 +1,9 @@
 # ☸️ pod-lens
 
+[![Tests](https://github.com/williampsena/pod-lens/actions/workflows/tests.yaml/badge.svg)](https://github.com/williampsena/pod-lens/actions/workflows/tests.yaml)
+[![Gitleaks](https://github.com/williampsena/pod-lens/actions/workflows/gitleaks.yaml/badge.svg)](https://github.com/williampsena/pod-lens/actions/workflows/gitleaks.yaml)
+[![Trivy Security Scan](https://github.com/williampsena/pod-lens/actions/workflows/trivy.yaml/badge.svg)](https://github.com/williampsena/pod-lens/actions/workflows/trivy.yaml)
+
 Lightweight pod information viewer for Kubernetes, similar to [traefik/whoami](https://github.com/traefik/whoami).
 
 ## ✨ Features
