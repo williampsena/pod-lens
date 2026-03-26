@@ -154,4 +154,4 @@ Run `make test-coverage` for detailed report.
 
 ## 📄 License
 
-MIT
+[MIT](./LICENSE.md)
