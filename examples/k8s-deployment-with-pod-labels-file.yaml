@@ -31,11 +31,37 @@ spec:
         ApplicationName: pod-lens
         Environment: production
     spec:
+      # Pod-level security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      serviceAccountName: pod-lens
+      
       containers:
       - name: pod-lens
         image: pod-lens:latest
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 80
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        
+        # Container-level security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+              - ALL
+        
         env:
         - name: PORT
           value: "80"
@@ -48,13 +74,56 @@ spec:
         # Option 2: Using downwardAPI to pass labels from ConfigMap (RECOMMENDED)
         - name: POD_LABELS_FILE
           value: /etc/pod-labels/labels.txt
+        
         volumeMounts:
         - name: labels
           mountPath: /etc/pod-labels
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        
+        # Resource limits for predictable performance
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+      
       volumes:
       - name: labels
         configMap:
           name: pod-labels
+          defaultMode: 0444  # Read-only
+      - name: tmp
+        emptyDir:
+          sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pod-lens
+automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service
@@ -64,7 +133,9 @@ spec:
   selector:
     app.kubernetes.io/name: pod-lens
   ports:
-  - protocol: TCP
+  - name: http
+    protocol: TCP
     port: 80
-    targetPort: 80
+    targetPort: http
   type: ClusterIP
+

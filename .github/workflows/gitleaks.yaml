@@ -21,14 +21,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }} 
-          args: detect --verbose --no-color --report-format json --report-path gitleaks_report.json --config-path .gitleaks.toml
+      - name: Run Gitleaks via Docker
+        run: |
+          docker run --rm \
+            --volume ${{ github.workspace }}:/repo \
+            --workdir /repo \
+            zricethezav/gitleaks:latest \
+            detect \
+            --verbose \
+            --no-color \
+            --report-format json \
+            --report-path gitleaks_report.json \
+            --config-path .gitleaks.toml
 
       - name: Upload Gitleaks report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: gitleaks-report
           path: gitleaks_report.json

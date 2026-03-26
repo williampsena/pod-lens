@@ -15,6 +15,7 @@ Lightweight pod information viewer for Kubernetes, similar to [traefik/whoami](h
 - 🌓 Light & dark theme support
 - 🐳 Docker multi-tag support (:light, :dark, :latest)
 - 🔒 Automatic sensitive header masking (Authorization, Cookie, X-Api-Key, etc)
+- 🛡️ Pod Security Standards (PSS) compliant deployment example
 - ⚡ Graceful shutdown (Ctrl+C or press 'c')
 
 ## 🚀 Quick Start
