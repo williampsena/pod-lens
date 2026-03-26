@@ -196,12 +196,19 @@ func staticHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
+func healthzHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
 func RunAndServer() error {
 	port := fmt.Sprintf(":%v", settings.GetPort())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
 	mux.HandleFunc("/static/", staticHandler)
+	mux.HandleFunc("/healthz", healthzHandler)
 
 	server := &http.Server{
 		Addr:    port,

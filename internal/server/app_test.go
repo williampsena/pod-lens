@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -176,5 +177,69 @@ func BenchmarkMaskSensitiveHeaders(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		maskSensitiveHeaders(headers)
+	}
+}
+
+func TestHealthzHandler(t *testing.T) {
+	tests := []struct {
+		name           string
+		method         string
+		expectedStatus int
+		expectedBody   string
+		expectedHeader string
+	}{
+		{
+			name:           "GET request returns 200",
+			method:         "GET",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "OK",
+			expectedHeader: "text/plain; charset=utf-8",
+		},
+		{
+			name:           "POST request returns 200",
+			method:         "POST",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "OK",
+			expectedHeader: "text/plain; charset=utf-8",
+		},
+		{
+			name:           "HEAD request returns 200",
+			method:         "HEAD",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "OK",
+			expectedHeader: "text/plain; charset=utf-8",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, "/healthz", nil)
+			w := httptest.NewRecorder()
+
+			healthzHandler(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
+			}
+
+			if w.Body.String() != tt.expectedBody {
+				t.Errorf("expected body %q, got %q", tt.expectedBody, w.Body.String())
+			}
+
+			contentType := w.Header().Get("Content-Type")
+			if contentType != tt.expectedHeader {
+				t.Errorf("expected Content-Type %q, got %q", tt.expectedHeader, contentType)
+			}
+		})
+	}
+}
+
+func BenchmarkHealthzHandler(b *testing.B) {
+	req := httptest.NewRequest("GET", "/healthz", nil)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w := httptest.NewRecorder()
+		healthzHandler(w, req)
 	}
 }
