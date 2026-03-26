@@ -64,6 +64,36 @@ Example:
 PORT=3000 THEME=dark POD_LABELS="app=myapp,version=1.0" make run
 ```
 
+### Kubernetes Deployment
+
+To automatically inject pod labels into the application, use `fieldRef` in your deployment:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-lens
+spec:
+  template:
+    spec:
+      containers:
+      - name: pod-lens
+        image: willsenabr/pod-lens:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: THEME
+          value: "dark"
+        - name: POD_LABELS
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels
+```
+
+This automatically reads the pod's labels and displays them in the UI without manual configuration.
+
 ## 📝 Available Commands
 
 ```bash
