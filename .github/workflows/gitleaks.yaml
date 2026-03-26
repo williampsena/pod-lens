@@ -32,7 +32,7 @@ jobs:
             --no-color \
             --report-format json \
             --report-path gitleaks_report.json \
-            --config-path .gitleaks.toml
+            --config .gitleaks.toml
 
       - name: Upload Gitleaks report
         uses: actions/upload-artifact@v4
