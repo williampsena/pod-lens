@@ -1,0 +1,62 @@
+name: Trivy Scan
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  fs-scan:
+    runs-on: ubuntu-latest
+    name: Run Trivy Filesystem Scan
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner in fs mode
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        trivy-config: trivy/trivy.yaml
+        severity: 'HIGH,CRITICAL'
+        exit-code: 2
+
+  image-scan:
+    runs-on: ubuntu-latest
+    name: Run Trivy Image Scan
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Build Docker image
+      run: docker build -f Containerfile -t local-nginx .
+
+    - name: Run Trivy vulnerability scanner in image mode
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'image'
+        image-ref: 'local-nginx'
+        trivy-config: trivy/trivy.yaml
+        severity: 'HIGH,CRITICAL'
+        exit-code: 2
+  
+  config-scan:
+    runs-on: ubuntu-latest
+    name: Run Trivy Config Scan
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner in config mode
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'config'
+        scan-ref: '.'
+        trivy-config: trivy/trivy.yaml
+        severity: 'HIGH,CRITICAL'
+        exit-code: 2

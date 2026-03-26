@@ -14,7 +14,7 @@ DOCKER_IMAGE=$(DOCKER_USERNAME)/$(BINARY_NAME)
 help:
 	@echo "Available targets:"
 	@echo ""
-	@echo "  make install-deps       Install global dependencies (gotestfmt, gitleaks)"
+	@echo "  make install-deps       Install global dependencies (gotestfmt)"
 	@echo "  make build              Build the application"
 	@echo "  make run                Run the application (use: make run opts=\"--flag=value\")"
 	@echo "  make stop               Stop the running application"
@@ -24,7 +24,8 @@ help:
 	@echo "  make test-coverage      Run tests with coverage report"
 	@echo "  make fmt                Format code"
 	@echo "  make lint               Run golangci-lint (if available)"
-	@echo "  make leaks              Scan for secrets with Gitleaks"
+	@echo "  make leaks              Scan for secrets (last commit only, via Docker)"
+	@echo "  make leaks-history      Scan entire repository for secrets (via Docker)"
 	@echo "  make clean              Clean build artifacts"
 	@echo "  make install-local      Build and install locally to $(DESTDIR)/$(BINARY_NAME)"
 	@echo ""
@@ -45,10 +46,6 @@ install-deps:
 	@command -v gotestfmt > /dev/null 2>&1 || { \
 		echo "Installing gotestfmt..."; \
 		$(GO) install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest; \
-	}
-	@command -v gitleaks > /dev/null 2>&1 || { \
-		echo "Installing gitleaks..."; \
-		$(GO) install github.com/gitleaks/gitleaks/v10/cmd/gitleaks@latest; \
 	}
 	@echo "✓ Dependencies installed successfully"
 
@@ -175,14 +172,25 @@ lint:
 	}
 
 # Scan for secrets with Gitleaks
+precommit: leaks
+
+# Scan for secrets - last commit only
 leaks:
-	@command -v gitleaks > /dev/null 2>&1 && { \
-		echo "🔍 Scanning for secrets with Gitleaks..."; \
-		gitleaks detect --verbose --no-color -c .gitleaks.toml; \
-	} || { \
-		echo "ℹ Gitleaks not installed. Install with:"; \
-		echo "  go install github.com/gitleaks/gitleaks/v10/cmd/gitleaks@latest"; \
-	}
+	@echo "🔍 Scanning for secrets (last commit) with Gitleaks..."
+	docker run --rm \
+		-v $(PWD):/repo \
+		zricethezav/gitleaks:latest \
+		detect --log-opts="HEAD^..HEAD" --source /repo --config /repo/.gitleaks.toml --report-format json --report-path /repo/gitleaks_report.json
+	@echo "✓ Scan complete. Report saved to gitleaks_report.json"
+
+# Scan for secrets - entire repository history
+leaks-history:
+	@echo "🔍 Scanning entire repository history for secrets..."
+	docker run --rm \
+		-v $(PWD):/repo \
+		zricethezav/gitleaks:latest \
+		detect --source /repo --config /repo/.gitleaks.toml --report-format json --report-path /repo/gitleaks_report.json
+	@echo "✓ Scan complete. Report saved to gitleaks_report.json"
 
 # Clean build artifacts
 clean:

@@ -27,3 +27,6 @@ vendor/
 .env
 .*.pid
 .env.sample
+
+# gitleaks
+gitleaks_report.json

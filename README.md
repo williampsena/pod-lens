@@ -82,6 +82,8 @@ make test-match case="TestName"  # Run specific test
 # Code Quality
 make fmt               # Format code
 make lint              # Run linter (if available)
+make leaks             # Scan for secrets (last commit, via Docker)
+make leaks-history     # Scan entire repo for secrets (via Docker)
 
 # Docker
 make docker-build      # Build with light theme (default/latest)
@@ -135,10 +137,16 @@ This project uses [Gitleaks](https://github.com/gitleaks/gitleaks) to detect and
 - Scans repository history for credential patterns
 - Ignores test files and known false positives
 
-To run locally:
+To run locally via Docker:
 ```bash
-gitleaks detect --verbose
+# Scan last commit only
+make leaks
+
+# Scan entire repository history
+make leaks-history
 ```
+
+Both commands generate a JSON report at `gitleaks_report.json`.
 
 ## 📊 Test Coverage
 
