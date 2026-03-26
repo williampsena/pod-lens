@@ -7,17 +7,16 @@ services:
       dockerfile: Containerfile
     container_name: pod-lens
     ports:
-      - "8080:8080"
+      - "8080:80"
     environment:
       THEME: dark
-      PORT: 8080
       POD_LABELS: "app=pod-lens,version=1.0"
     volumes:
       - ./pages:/app/pages:ro
       - ./static:/app/static:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
       interval: 30s
       timeout: 3s
       retries: 3

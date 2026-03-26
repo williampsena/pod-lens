@@ -32,12 +32,12 @@ COPY --chown=app:app static/ ./static/
 
 USER app
 
-ENV PORT=8080
+ENV PORT=80
 
-EXPOSE 8080
+EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD nc -z localhost 8080 || exit 1
+    CMD nc -z localhost 80 || exit 1
 
 # Labels
 LABEL org.opencontainers.image.title="Pod Lens" \

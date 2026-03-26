@@ -231,9 +231,8 @@ docker-run:
 	@THEME=$${theme:-light}; \
 	echo "🐳 Starting Docker container with $$THEME theme..."; \
 	docker run -it --rm \
-		-p 8080:8080 \
+		-p 8080:80 \
 		-e THEME=$$THEME \
-		-e PORT=8080 \
 		--name $(BINARY_NAME) \
 		$(DOCKER_IMAGE):$$THEME
 

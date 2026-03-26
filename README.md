@@ -25,7 +25,7 @@ Lightweight pod information viewer for Kubernetes, similar to [traefik/whoami](h
 # Build
 make build
 
-# Run (default port 8080)
+# Run (default port 80)
 make run
 
 # With custom port and theme
@@ -59,7 +59,7 @@ Environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8080` | Server port |
+| `PORT` | `80` | Server port |
 | `THEME` | `light` | UI theme (light/dark) |
 | `POD_LABELS` | - | Pod labels as `key=value,key=value` |
 
@@ -84,10 +84,10 @@ spec:
       - name: pod-lens
         image: willsenabr/pod-lens:latest
         ports:
-        - containerPort: 8080
+        - containerPort: 80
         env:
         - name: PORT
-          value: "8080"
+          value: "80"
         - name: THEME
           value: "dark"
         - name: POD_LABELS
@@ -133,9 +133,9 @@ make docker-push       # Build & push to willsenabr/pod-lens
 Available on Docker Hub: `willsenabr/pod-lens`
 
 ```bash
-docker run -p 8080:8080 willsenabr/pod-lens:light
-docker run -p 8080:8080 willsenabr/pod-lens:dark
-docker run -p 8080:8080 willsenabr/pod-lens:latest
+docker run -p 8080:80 willsenabr/pod-lens:light
+docker run -p 8080:80 willsenabr/pod-lens:dark
+docker run -p 8080:80 willsenabr/pod-lens:latest
 ```
 
 ## 📦 Project Structure
