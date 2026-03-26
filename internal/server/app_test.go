@@ -16,9 +16,12 @@ func TestMaskValue(t *testing.T) {
 	}{
 		{"empty", "", "***"},
 		{"short", "abc", "***"},
-		{"exactly 6", "123456", "***"},
-		{"long value", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", "eyJ...CJ9"},
-		{"token", "sk_test_123456789abcdef", "sk_...def"},
+		{"4 chars", "1234", "***"},
+		{"5 chars", "12345", "12***45"},
+		{"20 chars", "12345678901234567890", "12***90"},
+		{"21 chars", "123456789012345678901", "1234...8901"},
+		{"50 chars", "12345678901234567890123456789012345678901234567890", "1234...7890"},
+		{"long value", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", "eyJhbG...pXVCJ9"},
 	}
 
 	for _, tt := range tests {
@@ -26,6 +29,133 @@ func TestMaskValue(t *testing.T) {
 			result := maskValue(tt.input)
 			if result != tt.expected {
 				t.Errorf("maskValue(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMaskValueWithDisableMasking(t *testing.T) {
+	os.Setenv("DISABLE_MASKING", "true")
+	defer os.Unsetenv("DISABLE_MASKING")
+
+	result := maskValue("secret_token_12345")
+	if result != "secret_token_12345" {
+		t.Errorf("maskValue with DISABLE_MASKING=true should return original value, got %q", result)
+	}
+}
+
+func TestIsSensitiveField(t *testing.T) {
+	tests := []struct {
+		name       string
+		fieldName  string
+		patterns   []string
+		expected   bool
+		maskingEnv string
+	}{
+		{"PASSWORD in uppercase", "PASSWORD", sensitiveEnvPatterns, true, ""},
+		{"password in lowercase", "password", sensitiveEnvPatterns, true, ""},
+		{"DB_PASSWORD", "DB_PASSWORD", sensitiveEnvPatterns, true, ""},
+		{"API_TOKEN", "API_TOKEN", sensitiveEnvPatterns, true, ""},
+		{"NORMAL_VAR", "NORMAL_VAR", sensitiveEnvPatterns, false, ""},
+		{"Label with password", "app-password", sensitiveLabelPatterns, true, ""},
+		{"Label with token", "secret-token", sensitiveLabelPatterns, true, ""},
+		{"api_key disabled masking", "API_KEY", sensitiveEnvPatterns, false, "true"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.maskingEnv != "" {
+				os.Setenv("DISABLE_MASKING", tt.maskingEnv)
+				defer os.Unsetenv("DISABLE_MASKING")
+			}
+
+			result := isSensitiveField(tt.fieldName, tt.patterns)
+			if result != tt.expected {
+				t.Errorf("isSensitiveField(%q) = %v, want %v", tt.fieldName, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMaskSensitiveEnvironment(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]string
+		expected map[string]string
+	}{
+		{
+			name: "mask password and token",
+			input: map[string]string{
+				"POD_NAME":    "my-pod",
+				"DB_PASSWORD": "super_secret_password_123",
+				"API_TOKEN":   "sk_live_token_xyz",
+				"APP_VERSION": "1.0.0",
+			},
+			expected: map[string]string{
+				"POD_NAME":    "my-pod",
+				"APP_VERSION": "1.0.0",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := maskSensitiveEnvironment(tt.input)
+
+			// Check non-sensitive fields are preserved
+			for key, expectedVal := range tt.expected {
+				if val, exists := result[key]; !exists || val != expectedVal {
+					t.Errorf("Expected %q=%q, got %q", key, expectedVal, val)
+				}
+			}
+
+			// Check sensitive fields are masked
+			if password, exists := result["DB_PASSWORD"]; exists {
+				if !strings.Contains(password, "***") && !strings.Contains(password, "...") {
+					t.Errorf("DB_PASSWORD should be masked, got %q", password)
+				}
+			}
+		})
+	}
+}
+
+func TestMaskSensitiveLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]string
+		expected map[string]string
+	}{
+		{
+			name: "mask labels with sensitive keys",
+			input: map[string]string{
+				"app.kubernetes.io/name": "my-app",
+				"secret-token":           "super_sensitive_token",
+				"api-key":                "key_value_123",
+				"Environment":            "production",
+			},
+			expected: map[string]string{
+				"app.kubernetes.io/name": "my-app",
+				"Environment":            "production",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := maskSensitiveLabels(tt.input)
+
+			// Check non-sensitive fields are preserved
+			for key, expectedVal := range tt.expected {
+				if val, exists := result[key]; !exists || val != expectedVal {
+					t.Errorf("Expected %q=%q, got %q", key, expectedVal, val)
+				}
+			}
+
+			// Check sensitive fields are masked
+			if token, exists := result["secret-token"]; exists {
+				if !strings.Contains(token, "***") && !strings.Contains(token, "...") {
+					t.Errorf("secret-token should be masked, got %q", token)
+				}
 			}
 		})
 	}

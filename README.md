@@ -67,12 +67,19 @@ Environment variables:
 |----------|---------|-------------|
 | `PORT` | `80` | Server port |
 | `THEME` | `light` | UI theme (light/dark) |
-| `POD_LABELS` | - | Pod labels as `key=value,key=value` |
+| `POD_LABELS` | - | Pod labels as `key=value,key=value` (comma-separated format) |
+| `POD_LABELS_FILE` | - | Path to file with pod labels from Kubernetes downwardAPI (format: `key="value"`, one per line) |
+| `DISABLE_MASKING` | `false` | Set to `true` to disable sensitive data masking |
 
 Example:
 ```bash
 PORT=3000 THEME=dark POD_LABELS="app=myapp,version=1.0" make run
+
+# Disable masking for development
+DISABLE_MASKING=true make run
 ```
+
+**Note:** When both `POD_LABELS_FILE` and `POD_LABELS` are set, the file takes precedence.
 
 ### Kubernetes Deployment
 
@@ -103,6 +110,82 @@ spec:
 ```
 
 This automatically reads the pod's labels and displays them in the UI without manual configuration.
+
+#### Using `POD_LABELS_FILE` with ConfigMap (Recommended)
+
+For more flexibility or when using a ConfigMap to manage labels, use `POD_LABELS_FILE`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pod-labels-config
+data:
+  labels.txt: |
+    app.kubernetes.io/name="pod-lens"
+    app.kubernetes.io/instance="prod"
+    Environment="production"
+    team="platform"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-lens
+  labels:
+    app.kubernetes.io/name: pod-lens
+spec:
+  template:
+    spec:
+      containers:
+      - name: pod-lens
+        image: willsenabr/pod-lens:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: PORT
+          value: "80"
+        - name: THEME
+          value: "dark"
+        - name: POD_LABELS_FILE
+          value: /etc/pod-labels/labels.txt
+        volumeMounts:
+        - name: labels-volume
+          mountPath: /etc/pod-labels
+      volumes:
+      - name: labels-volume
+        configMap:
+          name: pod-labels-config
+```
+
+The label file format is `key="value"` with one label per line. See [examples/k8s-deployment-with-pod-labels-file.yaml](examples/k8s-deployment-with-pod-labels-file.yaml) for a complete working example.
+
+### 🔒 Security & Data Masking
+
+Pod-lens automatically masks sensitive data to prevent exposure of credentials and tokens. Masking is applied to:
+
+**Headers:**
+- Authorization, Cookie, Set-Cookie
+- X-Api-Key, X-Auth-Token, X-Access-Token
+- X-Refresh-Token, X-Csrf-Token
+- And many other standard sensitive headers
+
+**Environment Variables & Labels:**
+- Variables/labels containing: PASSWORD, TOKEN, SECRET, APIKEY, CREDENTIAL, KEY, PRIVATE, PASSWD
+- Matching is case-insensitive and works with underscores and dashes
+
+**Smart Masking Display:**
+- Values ≤4 chars: `***`
+- Values 5-20 chars: Show 2 first + 2 last chars (e.g., `sk***ef`)
+- Values 21-50 chars: Show 4 first + 4 last chars (e.g., `1234...7890`)
+- Values 51+ chars: Show 6 first + 6 last chars (e.g., `eyJhbG...pXVCJ9`)
+
+**Disable Masking (Development Only):**
+```bash
+# Show unmasked values for debugging
+DISABLE_MASKING=true make run
+```
+
+⚠️ **Warning:** Never use `DISABLE_MASKING=true` in production!
 
 ## 📝 Available Commands
 

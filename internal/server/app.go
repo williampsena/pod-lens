@@ -52,6 +52,32 @@ var sensitiveHeaders = map[string]bool{
 	"Cf-Authorization":    true,
 }
 
+// Sensitive environment variable patterns that should be masked
+var sensitiveEnvPatterns = []string{
+	"PASSWORD",
+	"TOKEN",
+	"SECRET",
+	"APIKEY",
+	"API_KEY",
+	"CREDENTIAL",
+	"KEY",
+	"PRIVATE",
+	"PASSWD",
+}
+
+// Sensitive label patterns that should be masked
+var sensitiveLabelPatterns = []string{
+	"password",
+	"token",
+	"secret",
+	"apikey",
+	"api-key",
+	"credential",
+	"key",
+	"private",
+	"passwd",
+}
+
 // Safe environment variables to show (non-sensitive)
 var safeEnvPrefixes = []string{
 	"KUBERNETES_",
@@ -73,12 +99,66 @@ var safeEnvPrefixes = []string{
 
 var podStartTime = time.Now()
 
-// maskValue masks sensitive values, showing only first and last 3 characters
+// isMaskingDisabled checks if masking is disabled via DISABLE_MASKING env var
+func isMaskingDisabled() bool {
+	disableMasking := os.Getenv("DISABLE_MASKING")
+	return strings.ToLower(disableMasking) == "true"
+}
+
+// maskValue masks sensitive values with intelligent formatting
+// Shows more characters based on value length for better recognition
 func maskValue(value string) string {
-	if len(value) <= 6 {
+	if isMaskingDisabled() {
+		return value
+	}
+
+	valueLen := len(value)
+
+	// For very short values, just mask completely
+	if valueLen <= 4 {
 		return "***"
 	}
-	return value[:3] + "..." + value[len(value)-3:]
+
+	// For short values (5-20 chars): show 2 first + 2 last
+	if valueLen <= 20 {
+		return value[:2] + "***" + value[valueLen-2:]
+	}
+
+	// For medium values (21-50 chars): show 4 first + 4 last
+	if valueLen <= 50 {
+		return value[:4] + "..." + value[valueLen-4:]
+	}
+
+	// For long values: show 6 first + 6 last
+	return value[:6] + "..." + value[valueLen-6:]
+}
+
+// isSensitiveField checks if a field name matches sensitive patterns
+func isSensitiveField(fieldName string, patterns []string) bool {
+	if isMaskingDisabled() {
+		return false
+	}
+
+	upperField := strings.ToUpper(fieldName)
+	lowerField := strings.ToLower(fieldName)
+
+	for _, pattern := range patterns {
+		upperPattern := strings.ToUpper(pattern)
+		if strings.Contains(upperField, upperPattern) {
+			return true
+		}
+	}
+
+	// Also check with underscores replaced by dashes for label comparison
+	dashField := strings.ReplaceAll(lowerField, "_", "-")
+	for _, pattern := range patterns {
+		lowerPattern := strings.ToLower(pattern)
+		if strings.Contains(dashField, lowerPattern) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // maskSensitiveHeaders processes headers and masks sensitive values
@@ -95,6 +175,36 @@ func maskSensitiveHeaders(headers http.Header) map[string][]string {
 			result[key] = maskedValues
 		} else {
 			result[key] = values
+		}
+	}
+
+	return result
+}
+
+// maskSensitiveEnvironment masks sensitive environment variables
+func maskSensitiveEnvironment(safeEnv map[string]string) map[string]string {
+	result := make(map[string]string)
+
+	for key, value := range safeEnv {
+		if isSensitiveField(key, sensitiveEnvPatterns) {
+			result[key] = maskValue(value)
+		} else {
+			result[key] = value
+		}
+	}
+
+	return result
+}
+
+// maskSensitiveLabels masks sensitive labels
+func maskSensitiveLabels(labels map[string]string) map[string]string {
+	result := make(map[string]string)
+
+	for key, value := range labels {
+		if isSensitiveField(key, sensitiveLabelPatterns) {
+			result[key] = maskValue(value)
+		} else {
+			result[key] = value
 		}
 	}
 
@@ -171,10 +281,18 @@ func getPodInfo() PodInfo {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	theme := settings.GetTheme()
+	podInfo := getPodInfo()
+
+	// Mask sensitive environment variables
+	podInfo.Environment = maskSensitiveEnvironment(podInfo.Environment)
+
+	// Get and mask labels
+	labels := settings.GetPodLabels()
+	labels = maskSensitiveLabels(labels)
 
 	data := PageData{
-		Labels:  settings.GetPodLabels(),
-		Pod:     getPodInfo(),
+		Labels:  labels,
+		Pod:     podInfo,
 		Headers: maskSensitiveHeaders(r.Header),
 		Theme:   theme,
 	}

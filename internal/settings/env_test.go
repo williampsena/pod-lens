@@ -139,6 +139,7 @@ func TestGetPodLabels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Setenv("POD_LABELS", tt.labelsEnv)
 			defer os.Unsetenv("POD_LABELS")
+			defer os.Unsetenv("POD_LABELS_FILE")
 
 			result := GetPodLabels()
 			if len(result) != len(tt.expected) {
@@ -158,7 +159,7 @@ func TestGetPodLabels(t *testing.T) {
 	}
 }
 
-func TestParseLabels(t *testing.T) {
+func TestParseLabelsFromEnv(t *testing.T) {
 	tests := []struct {
 		name     string
 		raw      string
@@ -208,19 +209,93 @@ func TestParseLabels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseLabels(tt.raw)
+			result := parseLabelsFromEnv(tt.raw)
 
 			if len(result) != len(tt.expected) {
-				t.Errorf("parseLabels(%q) returned %d pairs, want %d", tt.raw, len(result), len(tt.expected))
+				t.Errorf("parseLabelsFromEnv(%q) returned %d pairs, want %d", tt.raw, len(result), len(tt.expected))
 			}
 
 			for key, expectedValue := range tt.expected {
 				value, exists := result[key]
 				if !exists {
-					t.Errorf("parseLabels(%q) missing key %q", tt.raw, key)
+					t.Errorf("parseLabelsFromEnv(%q) missing key %q", tt.raw, key)
 				}
 				if value != expectedValue {
-					t.Errorf("parseLabels(%q)[%q] = %q, want %q", tt.raw, key, value, expectedValue)
+					t.Errorf("parseLabelsFromEnv(%q)[%q] = %q, want %q", tt.raw, key, value, expectedValue)
+				}
+			}
+		})
+	}
+}
+
+func TestParseLabelsFromFile(t *testing.T) {
+	// Create a temporary test file
+	tmpFile, err := os.CreateTemp("", "labels_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	// Write test data in downwardAPI format: key="value"
+	testData := `app.kubernetes.io/name="my-application"
+app.kubernetes.io/instance="my-application-86f8d48a9-1.0.0"
+ApplicationName="my-application"
+Environment="stable"
+helm.sh/chart="platform-webapp-1.0.1"
+`
+	if _, err := tmpFile.WriteString(testData); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	tests := []struct {
+		name     string
+		filePath string
+		expected map[string]string
+		wantErr  bool
+	}{
+		{
+			name:     "valid file format",
+			filePath: tmpFile.Name(),
+			expected: map[string]string{
+				"app.kubernetes.io/name":     "my-application",
+				"app.kubernetes.io/instance": "my-application-86f8d48a9-1.0.0",
+				"ApplicationName":            "my-application",
+				"Environment":                "stable",
+				"helm.sh/chart":              "platform-webapp-1.0.1",
+			},
+			wantErr: false,
+		},
+		{
+			name:     "non-existent file",
+			filePath: "/nonexistent/file.txt",
+			expected: nil,
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseLabelsFromFile(tt.filePath)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseLabelsFromFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				if len(result) != len(tt.expected) {
+					t.Errorf("parseLabelsFromFile() returned %d pairs, want %d", len(result), len(tt.expected))
+				}
+
+				for key, expectedValue := range tt.expected {
+					value, exists := result[key]
+					if !exists {
+						t.Errorf("parseLabelsFromFile() missing key %q", key)
+					}
+					if value != expectedValue {
+						t.Errorf("parseLabelsFromFile()[%q] = %q, want %q", key, value, expectedValue)
+					}
 				}
 			}
 		})

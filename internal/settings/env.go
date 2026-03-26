@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"bufio"
 	"os"
 	"strconv"
 	"strings"
@@ -23,15 +24,24 @@ func GetTheme() string {
 }
 
 func GetPodLabels() PodLabels {
-	rawLabels := os.Getenv("POD_LABELS")
+	// Try to read from file first (downwardAPI)
+	labelsFile := os.Getenv("POD_LABELS_FILE")
+	if labelsFile != "" {
+		labels, err := parseLabelsFromFile(labelsFile)
+		if err == nil {
+			return labels
+		}
+	}
 
+	// Fallback to environment variable
+	rawLabels := os.Getenv("POD_LABELS")
 	if rawLabels == "" {
 		return make(map[string]string)
 	}
-	return parseLabels(rawLabels)
+	return parseLabelsFromEnv(rawLabels)
 }
 
-func parseLabels(raw string) map[string]string {
+func parseLabelsFromEnv(raw string) map[string]string {
 	labels := make(map[string]string)
 	pairs := strings.Split(raw, ",")
 
@@ -42,6 +52,42 @@ func parseLabels(raw string) map[string]string {
 		}
 	}
 	return labels
+}
+
+func parseLabelsFromFile(filePath string) (map[string]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	labels := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue // Skip empty lines
+		}
+
+		// Parse format: key="value"
+		kv := strings.SplitN(line, "=", 2)
+		if len(kv) == 2 {
+			key := strings.TrimSpace(kv[0])
+			value := strings.TrimSpace(kv[1])
+			// Remove surrounding quotes if present
+			if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+				value = value[1 : len(value)-1]
+			}
+			labels[key] = value
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return labels, nil
 }
 
 func getEnv(env, defaultValue string) string {
