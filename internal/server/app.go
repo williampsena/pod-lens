@@ -35,6 +35,8 @@ type PageData struct {
 	Pod     PodInfo
 }
 
+var cachedTemplate *template.Template
+
 // Sensitive headers that should be masked
 var sensitiveHeaders = map[string]bool{
 	"Authorization":       true,
@@ -177,8 +179,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		Theme:   theme,
 	}
 
-	tmpl := template.Must(template.ParseFiles("pages/index.html"))
-	tmpl.Execute(w, data)
+	if cachedTemplate == nil {
+		cachedTemplate = template.Must(template.ParseFiles("pages/index.html"))
+	}
+	cachedTemplate.Execute(w, data)
 }
 
 func staticHandler(w http.ResponseWriter, r *http.Request) {
@@ -224,7 +228,12 @@ func RunAndServer() error {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Println("💡 Press 'c' + Enter to shutdown, or Ctrl+C")
 		for {
-			input, _ := reader.ReadString('\n')
+			input, err := reader.ReadString('\n')
+			if err != nil {
+				// In Kubernetes containers, stdin may be closed or unavailable
+				// Exit gracefully instead of tight looping
+				return
+			}
 			input = strings.TrimSpace(strings.ToLower(input))
 			if input == "c" {
 				keyChan <- "c"
