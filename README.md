@@ -41,9 +41,15 @@ make docker-build
 # Build with dark theme
 make docker-build-dark
 
-# Run container
+# Run container via make
 make docker-run              # light theme
 make docker-run theme=dark   # dark theme
+
+# Run container directly with docker run
+docker run --rm -p 3000:80 willsenabr/pod-lens:light
+docker run --rm -p 3000:80 willsenabr/pod-lens:dark
+docker run --rm -p 3000:80 willsenabr/pod-lens:latest
+# Access at http://localhost:3000
 ```
 
 ### Docker Compose
